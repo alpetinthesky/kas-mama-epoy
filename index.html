@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Kas Sederhana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-6">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-center text-blue-600">Pencatatan Kas</h1>
+        
+        <!-- Form Input -->
+        <form id="kasForm" class="mb-8 p-4 bg-gray-50 rounded-lg border space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Tanggal</label>
+                    <input type="date" id="tanggal" required class="w-full p-2 border rounded focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Uraian</label>
+                    <input type="text" id="uraian" placeholder="Contoh: Beli sapu / Iuran warga" required class="w-full p-2 border rounded focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Pemasukan (Rp)</label>
+                    <input type="number" id="pemasukan" value="0" min="0" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Pengeluaran (Rp)</label>
+                    <input type="number" id="pengeluaran" value="0" min="0" class="w-full p-2 border rounded focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+                Simpan Transaksi
+            </button>
+        </form>
+
+        <!-- Tabel Data -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-blue-100 border-b-2 border-blue-200">
+                        <th class="p-3">Tanggal</th>
+                        <th class="p-3">Uraian</th>
+                        <th class="p-3 text-right">Pemasukan</th>
+                        <th class="p-3 text-right">Pengeluaran</th>
+                        <th class="p-3 text-right">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelBody">
+                    <tr><td colspan="5" class="p-4 text-center text-gray-500">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT DI SINI
+        const API_URL = "https://script.google.com/macros/s/AKfycbx-KyE5RAvsUssHBIoINo-JSAeTSUum2k-UDhUnh-JA3cmOP7ZbKaBgt1ROkOviy9Sscw/exec";
+
+        const formatRp = (angka) => {
+            if (!angka || angka == 0) return "-";
+            return Number(angka.toString().replace(/[^0-9,-]+/g,"")).toLocaleString('id-ID');
+        };
+
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                const tbody = document.getElementById("tabelBody");
+                tbody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Belum ada transaksi</td></tr>`;
+                    return;
+                }
+
+                data.forEach(item => {
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b hover:bg-gray-50";
+                    tr.innerHTML = `
+                        <td class="p-3">${item.tanggal}</td>
+                        <td class="p-3">${item.uraian}</td>
+                        <td class="p-3 text-right text-green-600">${formatRp(item.pemasukan)}</td>
+                        <td class="p-3 text-right text-red-600">${formatRp(item.pengeluaran)}</td>
+                        <td class="p-3 text-right font-bold text-blue-700">${formatRp(item.saldo)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                document.getElementById("tabelBody").innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal memuat data.</td></tr>`;
+            }
+        }
+
+        document.getElementById("kasForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.innerText = "Menyimpan...";
+            submitBtn.disabled = true;
+
+            const payload = {
+                tanggal: document.getElementById("tanggal").value,
+                uraian: document.getElementById("uraian").value,
+                pemasukan: document.getElementById("pemasukan").value || 0,
+                pengeluaran: document.getElementById("pengeluaran").value || 0
+            };
+
+            try {
+                await fetch(API_URL, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+                
+                document.getElementById("kasForm").reset();
+                document.getElementById("pemasukan").value = 0;
+                document.getElementById("pengeluaran").value = 0;
+                await loadData();
+            } catch (error) {
+                alert("Gagal menyimpan data!");
+            } finally {
+                submitBtn.innerText = "Simpan Transaksi";
+                submitBtn.disabled = false;
+            }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
